@@ -15,6 +15,8 @@ from torch.utils.data import DataLoader
 from utils.functions import parse_softmax_temperature
 from nets.nar_model import NARModel
 
+from problems.tsp.problem_tsp import nearest_neighbor_graph
+
 from scipy.spatial.distance import pdist
 from scipy.spatial.distance import squareform
 
@@ -89,7 +91,7 @@ def test_one_tsp(coor, pre_edges, node_num, cluster_center, top_k, top_k_expand)
     distB_raw = squareform(distA)
     distB = squareform(distA) + 10.0 * np.eye(N = node_num, M =node_num, dtype = np.float64)
 
-    pre_edges = np.eye(N = top_k + 1, M = top_k + 1) # If I want to work on a sparsified graph, this has to be changed!!!
+    # pre_edges = np.eye(N = top_k + 1, M = top_k + 1) # If I want to work on a sparsified graph, this has to be changed!!!
 
     neighbor = np.argpartition(distB, kth = top_k, axis=1)
     
@@ -130,11 +132,13 @@ def test_one_tsp(coor, pre_edges, node_num, cluster_center, top_k, top_k_expand)
         node_coord *= scale
         nodes_coord.append(node_coord)
 
-        edges.append(pre_edges)
+        edges.append(nearest_neighbor_graph(node_coord, 0.5, 'percentage'))
+        # edges.append(pre_edges)
         mesh = np.meshgrid(cluster_center_neighbor, cluster_center_neighbor)
 
         meshs.append(mesh)
-        Omega[mesh] += 1
+        # Omega[mesh] += 1
+        Omega[mesh[0], mesh[1]] += 1
 
         num_clusters+=1
 
@@ -180,6 +184,8 @@ def multiprocess_write(sub_prob, meshgrid, omega, node_num = 20, tsplib_name = '
         edges_probs[meshgrid[i][0], meshgrid[i][1]] += sub_prob[i, :, :, 1]
     edges_probs = edges_probs / (omega + 1e-8)#[:, None]
 
+    # np.fill_diagonal(edges_probs, 0)
+
     # normalize the probability in an instance 
     edges_probs = edges_probs + edges_probs.T
     edges_probs_norm = edges_probs/np.reshape(np.sum(edges_probs, axis=1),
@@ -202,9 +208,9 @@ def _eval_dataset(model, dataset, decode_strategy, width, softmax_temp, opts, de
     batch_size = opts.batch_size # Check what the batch size is!
 
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=opts.num_workers)
-    K = 19 # Also as a param
-    K_expand = 39
-    num_nodes = 100 # Also a param
+    K = 49 # Also as a param
+    K_expand = 99
+    num_nodes = 500 # Also a param
     start_row_num = 0 # Also
     if num_nodes == 20:
         threshold = 1
@@ -243,12 +249,19 @@ def _eval_dataset(model, dataset, decode_strategy, width, softmax_temp, opts, de
 
         with torch.no_grad():
 
-            x_graph_sampled = torch.LongTensor(graph_sampled).type(dtypeLong).requires_grad_(False)
+            x_graph_sampled = torch.LongTensor(graph_sampled).type(dtypeLong).requires_grad_(False) # Should I put them .to_device()?
             x_nodes_sampled = torch.FloatTensor(nodes_sampled).type(dtypeFloat).requires_grad_(False)
                                                                                    
             logits, log_p = model._inner(x_nodes_sampled, x_graph_sampled)
             
             y_preds_prob = F.softmax(logits, dim=3)
+
+            # x_graph_sampled_n = x_graph_sampled.numpy()
+
+            # Set the second value of the last dimension to 0 wherever the corresponding x_graph_sampled value is 1
+            mask = (x_graph_sampled == 1).unsqueeze(-1).expand(-1, -1, -1, 2)
+            y_preds_prob[mask] = 0
+
             y_preds_prob_numpy = y_preds_prob.cpu().numpy()
 
 
