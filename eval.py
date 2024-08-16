@@ -236,9 +236,10 @@ def _eval_dataset(model, dataset, decode_strategy, width, softmax_temp, opts, de
     for batch in tqdm(dataloader, disable=opts.no_progress_bar, ascii=True):
         # Optionally move Tensors to GPU
         # nodes, graph = move_to(batch['nodes'], device), move_to(batch['graph'], device)
+        start = time.time()
         nodes, graph = batch['nodes'].detach().numpy(), batch['graph'].detach().numpy()
 
-        start = time.time()
+        
 
         for i in range(batch_size): 
             nodes_temp, graph_temp, mesh, omega = test_one_tsp(nodes[i], graph[i], node_num=num_nodes, cluster_center=0, top_k=K, top_k_expand=K_expand) 
@@ -279,68 +280,7 @@ def _eval_dataset(model, dataset, decode_strategy, width, softmax_temp, opts, de
         # ----------------------------------------------------------------------------------------------------------------------------
         #                                                       BORDER
         # ----------------------------------------------------------------------------------------------------------------------------
-        # with torch.no_grad():
-            
-        #     if type(model) == NARModel:
-        #         if decode_strategy == 'greedy':
-        #             _, _, sequences, costs = model.greedy_search(nodes, graph)
-        #             costs, sequences = costs.cpu().numpy(), sequences.cpu().numpy()
-        #         else:
-        #             assert decode_strategy == 'bs', "NAR Decoder model only supports greedy/beam search"
-        #             _, _, sequences, costs = model.beam_search(nodes, graph, beam_size=width)
-                
-        #         batch_size = len(costs)
-                
-        #     else:
-        #         if decode_strategy in ('sample', 'greedy'):
-        #             if decode_strategy == 'greedy':
-        #                 assert width == 0, "Do not set width when using greedy"
-        #                 assert opts.batch_size <= opts.max_calc_batch_size, \
-        #                     "batch_size should be smaller than calc batch size"
-        #                 batch_rep = 1
-        #                 iter_rep = 1
-        #             elif width * opts.batch_size > opts.max_calc_batch_size:
-        #                 assert opts.batch_size == 1
-        #                 assert width % opts.max_calc_batch_size == 0
-        #                 batch_rep = opts.max_calc_batch_size
-        #                 iter_rep = width // opts.max_calc_batch_size
-        #             else:
-        #                 batch_rep = width
-        #                 iter_rep = 1
-        #             assert batch_rep > 0
-        #             # This returns (batch_size, iter_rep shape)
-        #             sequences, costs = model.sample_many(nodes, graph, batch_rep=batch_rep, iter_rep=iter_rep)
-        #             batch_size = len(costs)
-        #             ids = torch.arange(batch_size, dtype=torch.int64, device=costs.device)
-        #         else:
-        #             assert decode_strategy == 'bs'
-
-        #             cum_log_p, sequences, costs, ids, batch_size = model.beam_search(
-        #                 nodes, graph, beam_size=width,
-        #                 compress_mask=opts.compress_mask,
-        #                 max_calc_batch_size=opts.max_calc_batch_size
-        #             )
-
-        #         if sequences is None:
-        #             sequences = [None] * batch_size
-        #             costs = [math.inf] * batch_size
-        #         else:
-        #             sequences, costs = get_best(
-        #                 sequences.cpu().numpy(), costs.cpu().numpy(),
-        #                 ids.cpu().numpy() if ids is not None else None,
-        #                 batch_size
-        #             )
-        
-        # duration = time.time() - start
-        
-        # for seq, cost in zip(sequences, costs):
-        #     if model.problem.NAME in ("tsp", "tspsl"):
-        #         seq = seq.tolist()  # No need to trim as all are same length
-        #     else:
-        #         assert False, "Unkown problem: {}".format(model.problem.NAME)
-
-        #     results.append((cost, seq, duration))
-
+    
     print(f"Time taken:{sum_time}")
 
     return 0
