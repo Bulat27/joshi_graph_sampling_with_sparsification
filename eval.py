@@ -208,6 +208,7 @@ def _eval_dataset(model, dataset, decode_strategy, width, softmax_temp, opts, de
     batch_size = opts.batch_size # Check what the batch size is!
 
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=opts.num_workers)
+    sum_time = 0
     K = 49 # Also as a param
     K_expand = 99
     num_nodes = 500 # Also a param
@@ -267,7 +268,7 @@ def _eval_dataset(model, dataset, decode_strategy, width, softmax_temp, opts, de
 
 
         end = time.time()
-        # sum_time += end - start
+        sum_time += end - start
 
         for i in range(batch_size):
             heatmap_path = f'./results/heatmap/tsp{num_nodes}/heatmaptsp{num_nodes}_{i+start_row_num}.txt'
