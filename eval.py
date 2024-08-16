@@ -341,6 +341,8 @@ def _eval_dataset(model, dataset, decode_strategy, width, softmax_temp, opts, de
 
         #     results.append((cost, seq, duration))
 
+    print(f"Time taken:{sum_time}")
+
     return 0
 
 
